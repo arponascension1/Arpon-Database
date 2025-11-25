@@ -73,7 +73,7 @@ class ConnectionFactory
         $pdo = $this->createPdoResolver($config);
 
         return $this->createConnection(
-            $config['driver'], $pdo, $config['database'], $config['prefix'], $config
+            $config['driver'], $pdo, $config['database'], $config['prefix'] ?? '', $config
         );
     }
 
