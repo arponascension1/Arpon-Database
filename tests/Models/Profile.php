@@ -9,10 +9,8 @@ use Arpon\Database\Eloquent\Model;
  */
 class Profile extends Model
 {
-   
-    
     protected array $fillable = [
-        'post_id',
+        'user_id',
         'bio',
         'website'
     ];
@@ -20,18 +18,10 @@ class Profile extends Model
     protected array $dates = ['created_at', 'updated_at'];
 
     /**
-     * Profile belongs to a post
-     */
-    public function post()
-    {
-        return $this->belongsTo(Post::class);
-    }
-
-    /**
-     * Profile belongs to a user through post
+     * Profile belongs to a user
      */
     public function user()
     {
-        return $this->hasOneThrough(User::class, Post::class, 'id', 'id', 'post_id', 'user_id');
+        return $this->belongsTo(User::class);
     }
 }

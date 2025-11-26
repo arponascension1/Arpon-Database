@@ -12,6 +12,7 @@ class Comment extends Model
     
     protected array $fillable = [
         'content',
+        'post_id',
         'commentable_id',
         'commentable_type'
     ];

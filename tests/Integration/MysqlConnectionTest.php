@@ -25,6 +25,15 @@ class MysqlConnectionTest extends TestCase
         }
     }
 
+    protected function setUp(): void
+    {
+        try {
+            parent::setUp();
+        } catch (Exception $e) {
+            $this->markTestSkipped('MySQL connection not available: ' . $e->getMessage());
+        }
+    }
+
     /**
      * @test
      */

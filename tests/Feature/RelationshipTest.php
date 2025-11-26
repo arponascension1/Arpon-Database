@@ -570,4 +570,37 @@ class RelationshipTest extends TestCase
             Comment::create(['content' => 'Looking forward to more posts.', 'post_id' => $post2->id]);
         }
     }
+
+    /**
+     * @test
+     */
+    public function it_eager_loads_with_constraints()
+    {
+        // Create a user
+        $user = User::create([
+            'name' => 'John Doe',
+            'email' => 'john@example.com'
+        ]);
+
+        // Create published and unpublished posts for the user
+        $user->posts()->create([
+            'title' => 'Published Post',
+            'content' => 'This post is published.',
+            'published' => true,
+        ]);
+
+        $user->posts()->create([
+            'title' => 'Unpublished Post',
+            'content' => 'This post is not published.',
+            'published' => false,
+        ]);
+
+        // Eager load the user with only their unpublished posts
+        $userWithPosts = User::with(['posts' => function ($query) {
+            $query->where('published', false);
+        }])->find($user->id);
+
+        $this->assertCount(1, $userWithPosts->posts);
+        $this->assertEquals('Unpublished Post', $userWithPosts->posts->first()->title);
+    }
 }

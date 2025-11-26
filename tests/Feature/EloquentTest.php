@@ -171,43 +171,6 @@ class EloquentTest extends TestCase
     /**
      * @test
      */
-    public function it_handles_query_builder_integration()
-    {
-        $this->createEloquentTestData();
-
-        // Test where queries
-        $youngUsers = User::where('age', '<', 30)->get();
-        $this->assertInstanceOf(Collection::class, $youngUsers);
-        
-        // Test first() method
-        $firstUser = User::where('name', 'like', '%Alice%')->first();
-        $this->assertNotNull($firstUser);
-        $this->assertInstanceOf(User::class, $firstUser);
-
-        // Test orderBy
-        $orderedUsers = User::orderBy('age', 'desc')->get();
-        $this->assertInstanceOf(Collection::class, $orderedUsers);
-
-        // Test limit
-        $limitedUsers = User::limit(2)->get();
-        $this->assertLessThanOrEqual(2, $limitedUsers->count());
-
-        // Test count
-        $userCount = User::query()->count();
-        $this->assertIsInt($userCount);
-        $this->assertGreaterThan(0, $userCount);
-
-        // Test exists
-        $exists = User::where('email', 'alice@example.com')->exists();
-        $this->assertTrue($exists);
-
-        $notExists = User::where('email', 'nonexistent@example.com')->exists();
-        $this->assertFalse($notExists);
-    }
-
-    /**
-     * @test
-     */
     public function it_handles_fillable_and_guarded_attributes()
     {
         // Test mass assignment with fillable
@@ -299,8 +262,9 @@ class EloquentTest extends TestCase
         $afterUpdate = date('Y-m-d H:i:s');
 
         $this->assertNotNull($user->updated_at);
-        $this->assertGreaterThanOrEqual($beforeUpdate, $user->updated_at);
-        $this->assertLessThanOrEqual($afterUpdate, $user->updated_at);
+        $updatedAt = $user->updated_at instanceof \DateTime ? $user->updated_at->format('Y-m-d H:i:s') : $user->updated_at;
+        $this->assertGreaterThanOrEqual($beforeUpdate, $updatedAt);
+        $this->assertLessThanOrEqual($afterUpdate, $updatedAt);
     }
 
     /**

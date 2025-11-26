@@ -88,15 +88,67 @@ class EloquentBuilder
     {
         $results = [];
 
+        // Handle sequential arrays where relations may be passed as [ 'relation', Closure, ... ]
+        // e.g. with(['posts', function($q) { ... }])
+        $keys = array_keys($relations);
+        $sequential = $keys === range(0, count($relations) - 1);
+
+        if ($sequential) {
+            $i = 0;
+            $count = count($relations);
+
+            while ($i < $count) {
+                $item = $relations[$i];
+
+                // If the item is a relation name
+                if (is_string($item)) {
+                    $name = $item;
+
+                    // If the next item exists and is a Closure, treat it as the constraints
+                    $next = $relations[$i + 1] ?? null;
+
+                    if ($next instanceof \Closure) {
+                        $constraints = $next;
+                        $i += 2;
+                    } else {
+                        $constraints = function () {
+                            //
+                        };
+                        $i += 1;
+                    }
+
+                    $results = $this->addNestedWiths($name, $results);
+                    $results[$name] = $constraints;
+                    continue;
+                }
+
+                // If the item is a key => value style (shouldn't happen in sequential)
+                if ($item instanceof \Closure) {
+                    // No associated relation name; skip.
+                    $i += 1;
+                    continue;
+                }
+
+                // Unknown entry, skip it
+                $i += 1;
+            }
+
+            return $results;
+        }
+
         foreach ($relations as $name => $constraints) {
             // If the "relation" value is actually a numeric key, we can assume that no
             // constraints have been specified for the eager load and we'll just put
             // an empty Closure with the loader so that we can treat all the same.
             if (is_numeric($name)) {
+                if (! is_string($constraints)) {
+                    continue;
+                }
+
                 $name = $constraints;
-                [$name, $constraints] = [$name, function () {
+                $constraints = function () {
                     //
-                }];
+                };
             }
 
             // We need to separate out any nested includes, which allows the developers

@@ -70,7 +70,7 @@ class DatabaseManager implements ConnectionResolverInterface
     protected function getConfig($key, $default = null)
     {
         if (is_array($this->app)) {
-            return $this->config[$key] ?? $default;
+            return $this->config[$key] ?? $this->config[str_replace('database.', '', $key)] ?? $default;
         }
         
         if ($this->app && method_exists($this->app, 'offsetExists') && $this->app->offsetExists('config')) {
@@ -189,7 +189,7 @@ class DatabaseManager implements ConnectionResolverInterface
             $connection->setFetchMode($fetchMode);
         }
         
-        if ($this->app && method_exists($this->app, 'bound') && $this->app->bound('events')) {
+        if ($this->app && is_object($this->app) && method_exists($this->app, 'bound') && $this->app->bound('events')) {
             $connection->setEventDispatcher($this->app['events']);
         }
 

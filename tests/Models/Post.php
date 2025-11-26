@@ -10,7 +10,7 @@ use Arpon\Database\Eloquent\Model;
 class Post extends Model
 {
     protected ?string $table = 'posts';
-    protected array $fillable = ['title', 'content', 'user_id', 'published_at'];
+    protected array $fillable = ['title', 'content', 'user_id', 'published', 'published_at'];
     protected array $dates = ['published_at', 'created_at', 'updated_at'];
 
     /**

@@ -358,9 +358,8 @@ class SqliteConnectionTest extends TestCase
         $this->assertGreaterThan(0, count($users));
 
         // Test Expression class
-        $expression = new Expression('UPPER(name)');
         $users = $connection->table('users')
-            ->select(['id', 'name', $expression . ' as upper_name'])
+            ->select('id', 'name', $connection->raw('UPPER(name) as upper_name'))
             ->where('name', 'like', 'Raw Test%')
             ->get();
 
@@ -450,7 +449,7 @@ class SqliteConnectionTest extends TestCase
             ->get();
 
         // Since we may not have posts, just verify the query structure works
-        $this->assertIsArray($usersWithPosts);
+        $this->assertInstanceOf('Arpon\Database\Support\Collection', $usersWithPosts);
     }
 
     /**

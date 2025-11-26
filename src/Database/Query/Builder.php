@@ -632,7 +632,7 @@ class Builder
      */
     public function whereExists(Closure $callback, $boolean = 'and', $not = false)
     {
-        $query = $this->connection->table(null);
+        $query = $this->newQuery();
 
         // First we will call the callback function with a new query instance. This
         // will allow the developer to build a sub-select query that will be used

@@ -1,7 +1,7 @@
 {
     "name": "arpon/database",
     "description": "Arpon Database - Advanced PHP Database Abstraction Layer with Laravel-compatible ORM, Schema Builder, Query Builder for MySQL and SQLite. Features 25+ column types, foreign key CASCADE support, advanced relationships, soft deletes, enhanced scopes system, and high-performance database operations.",
-    "version": "1.1.1",
+    "version": "1.0.1",
     "type": "library",
     "keywords": [
         "arpon",
