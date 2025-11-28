@@ -1,0 +1,16 @@
+# Exclude development files from Composer package distribution
+/tests export-ignore
+/examples export-ignore
+/test*.php export-ignore
+/.gitattributes export-ignore
+/.gitignore export-ignore
+/phpunit.xml export-ignore
+/phpunit.xml.dist export-ignore
+/.github export-ignore
+/docs export-ignore
+/README.md export-ignore
+/CHANGELOG.md export-ignore
+/index.php export-ignore
+/artisan export-ignore
+/migrqate.php export-ignore
+/SOFT_DELETE_IMPLEMENTATION.php export-ignore

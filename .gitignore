@@ -1,0 +1,83 @@
+# Composer
+/vendor/
+composer.lock
+
+# IDE files
+/.vscode/
+/.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+test.sqlite
+simple_test.sqlite
+cascade_test.sqlite
+fk_test_db/
+
+# Log files
+*.log
+/logs/
+
+# Cache files
+/cache/
+/tmp/
+*.tmp
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# PHPUnit
+/phpunit.xml
+/.phpunit.result.cache
+/tests/_reports/
+artisan
+
+# Backup files
+*.backup
+*.bak
+*.orig
+
+# Runtime files
+/runtime/
+/temp/
+
+# Node modules (if using any frontend tools)
+/node_modules/
+
+# Build artifacts
+/build/
+/dist/
+
+# Personal test files
+*_test.php
+test_*.php
+debug_*.php
+cascade_test.php
+fk_debug.php
+enhanced_schema_test.php
+
+# Configuration and example files
+bootstrap.php
+config.php
+index.php
+mysql_index.php
+migration.php
+
+# Configuration files (keep config templates but ignore actual configs with secrets)
+config_local.php
+SOFT_DELETE_IMPLEMENTATION.md
+CHANGELOG.md
