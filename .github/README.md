@@ -2,7 +2,7 @@
 
 **🚀 Advanced PHP Database Abstraction Layer**
 
-[![Latest Version](https://img.shields.io/badge/version-1.0.0-green.svg)](https://github.com/arponascension1/Arpon-Databae/releases)
+[![Latest Version](https://img.shields.io/badge/version-1.0.1-green.svg)](https://github.com/arponascension1/Arpon-Databae/releases)
 [![PHP Version](https://img.shields.io/badge/php-%5E7.4%7C%5E8.0-blue.svg)](https://php.net)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/arponascension1/Arpon-Databae?style=social)](https://github.com/arponascension1/Arpon-Databae)
