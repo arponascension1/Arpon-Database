@@ -230,9 +230,9 @@ class MySqlGrammar extends Grammar
      */
     public function compileRename($blueprint, $command)
     {
-        $from = $this->wrapTable($blueprint);
+        $from = $this->wrapTable($blueprint->getTable());
 
-        return "rename table {$from} to ".$this->wrapTable($command->to);
+        return "rename table {$from} to " . $this->wrapTable($command->to);
     }
 
     /**
@@ -289,11 +289,17 @@ class MySqlGrammar extends Grammar
      */
     public function compileRenameColumn($blueprint, $command)
     {
+        $column = $this->getColumn($blueprint, $command->from);
+
+        if (is_null($column)) {
+            throw new \RuntimeException('Cannot determine column type for renameColumn; DB introspection not implemented.');
+        }
+
         return sprintf('alter table %s change %s %s %s',
             $this->wrapTable($blueprint->getTable()),
             $this->wrap($command->from),
             $this->wrap($command->to),
-            $this->getType($this->getColumn($blueprint, $command->to))
+            $this->getType($column)
         );
     }
 

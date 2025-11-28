@@ -224,6 +224,18 @@ class Blueprint
     }
 
     /**
+     * Indicate that a column should be renamed.
+     *
+     * @param  string  $from
+     * @param  string  $to
+     * @return \Arpon\Database\Support\Fluent
+     */
+    public function renameColumn($from, $to)
+    {
+        return $this->addCommand('renameColumn', compact('from', 'to'));
+    }
+
+    /**
      * Specify the primary key(s) for the table.
      *
      * @param  string|array  $columns

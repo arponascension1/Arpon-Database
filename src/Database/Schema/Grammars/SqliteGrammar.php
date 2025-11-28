@@ -600,6 +600,22 @@ class SqliteGrammar extends Grammar
     }
 
     /**
+     * Compile a create unique index command for SQLite.
+     *
+     * @param  \Arpon\Database\Schema\Blueprint  $blueprint
+     * @param  \Arpon\Database\Support\Fluent  $command
+     * @return string
+     */
+    public function compileUnique($blueprint, $command)
+    {
+        return sprintf('create unique index %s on %s (%s)',
+            $command->index,
+            $this->wrapTable($blueprint->getTable()),
+            $this->columnize($command->columns)
+        );
+    }
+
+    /**
      * Compile a drop index command.
      *
      * @param  \Arpon\Database\Schema\Blueprint  $blueprint
