@@ -49,7 +49,7 @@
             "Arpon\\Database\\": "src/Database/"
         },
         "files": [
-            "src/Database/helpers.php"
+            "src/Database/Support/helpers.php"
         ]
     },
     "autoload-dev": {
