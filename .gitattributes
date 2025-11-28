@@ -12,5 +12,5 @@
 /CHANGELOG.md export-ignore
 /index.php export-ignore
 /artisan export-ignore
-/migrqate.php export-ignore
-/SOFT_DELETE_IMPLEMENTATION.php export-ignore
+/migration.php export-ignore
+/SOFT_DELETE_IMPLEMENTATION.md export-ignore
