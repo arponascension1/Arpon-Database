@@ -103,7 +103,7 @@ class MorphTo extends BelongsTo
 
         $ownerKey = $this->ownerKey ?? $instance->getKeyName();
 
-        return $instance->newQuery()->find($this->parent->{$this->foreignKey});
+        return $instance->newQueryWithoutScopes()->find($this->parent->{$this->foreignKey});
     }
 
     /**
@@ -116,7 +116,13 @@ class MorphTo extends BelongsTo
     {
         $class = Model::getActualClassNameForMorph($type);
 
-        return new $class;
+        $instance = new $class;
+
+        if (! $instance->getConnectionName()) {
+            $instance->setConnection($this->parent->getConnectionName());
+        }
+
+        return $instance;
     }
 
     /**

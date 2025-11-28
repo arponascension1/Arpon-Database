@@ -10,3 +10,7 @@
 /docs export-ignore
 /README.md export-ignore
 /CHANGELOG.md export-ignore
+/index.php export-ignore
+/artisan export-ignore
+/migrqate.php export-ignore
+/SOFT_DELETE_IMPLEMENTATION.php export-ignore

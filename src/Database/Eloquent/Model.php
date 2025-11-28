@@ -744,6 +744,14 @@ abstract class Model implements ArrayAccess, JsonSerializable
     }
 
     /**
+     * Get the name of the "created at" column.
+     */
+    public function getCreatedAtColumn(): ?string
+    {
+        return static::CREATED_AT;
+    }
+
+    /**
      * Get a fresh timestamp for the model.
      */
     public function freshTimestampString(): string
@@ -1280,7 +1288,16 @@ abstract class Model implements ArrayAccess, JsonSerializable
      */
     public function newQueryWithoutScopes(): EloquentBuilder
     {
-        return $this->newQuery();
+        $builder = $this->newEloquentBuilder($this->newBaseQueryBuilder())->setModel($this);
+
+        // Remove all global scopes that were applied in newEloquentBuilder.
+        $scopes = array_keys($this->getGlobalScopes());
+
+        if (!empty($scopes)) {
+            $builder->withoutGlobalScope($scopes);
+        }
+
+        return $builder;
     }
 
     /**
@@ -1474,7 +1491,10 @@ abstract class Model implements ArrayAccess, JsonSerializable
         $dirty = $this->getDirty();
 
         if (count($dirty) > 0) {
-            $this->setKeysForSaveQuery($this->newQuery())->update($dirty);
+            // Use a query without global scopes when saving to ensure updates
+            // such as restoring soft-deleted models are applied to the
+            // underlying row even if global scopes would otherwise filter it.
+            $this->setKeysForSaveQuery($this->newQueryWithoutScopes())->update($dirty);
 
             $this->syncChanges();
         }
@@ -1965,7 +1985,7 @@ abstract class Model implements ArrayAccess, JsonSerializable
 
         $localKey = $localKey ?: $this->getKeyName();
 
-        return $this->newMorphOne($instance->newQuery(), $this, $table.'.'.$type, $table.'.'.$id, $localKey);
+        return $this->newMorphOne($instance->newQuery(), $this, $type, $id, $localKey);
     }
 
     /**
@@ -1988,7 +2008,7 @@ abstract class Model implements ArrayAccess, JsonSerializable
 
         $localKey = $localKey ?: $this->getKeyName();
 
-        return $this->newMorphMany($instance->newQuery(), $this, $table.'.'.$type, $table.'.'.$id, $localKey);
+        return $this->newMorphMany($instance->newQuery(), $this, $type, $id, $localKey);
     }
 
     /**
@@ -2060,6 +2080,33 @@ abstract class Model implements ArrayAccess, JsonSerializable
         return $this->morphToMany(
             $related, $name, $table, $foreignPivotKey,
             $relatedPivotKey, $parentKey, $relatedKey, true
+        );
+    }
+
+    /**
+     * Define a many-to-many relationship.
+     *
+     * @param string $related
+     * @param string|null $table
+     * @param string|null $foreignPivotKey
+     * @param string|null $relatedPivotKey
+     * @param string|null $parentKey
+     * @param string|null $relatedKey
+     * @param string|null $relation
+     * @return \Arpon\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function belongsToMany(string $related, ?string $table = null, ?string $foreignPivotKey = null, ?string $relatedPivotKey = null, ?string $parentKey = null, ?string $relatedKey = null, ?string $relation = null)
+    {
+        $instance = $this->newRelatedInstance($related);
+
+        $foreignPivotKey = $foreignPivotKey ?: $this->getForeignKey();
+        $relatedPivotKey = $relatedPivotKey ?: $instance->getForeignKey();
+
+        $table = $table ?: $this->getTable().'_'. $instance->getTable();
+
+        return $this->newBelongsToMany(
+            $instance->newQuery(), $this, $table, $foreignPivotKey,
+            $relatedPivotKey, $parentKey ?: $this->getKeyName(), $relatedKey ?: $instance->getKeyName(), $relation
         );
     }
 
@@ -2288,6 +2335,24 @@ abstract class Model implements ArrayAccess, JsonSerializable
     }
 
     /**
+     * Instantiate a new BelongsToMany relationship.
+     *
+     * @param  \Arpon\Database\Eloquent\EloquentBuilder  $query
+     * @param  \Arpon\Database\Eloquent\Model  $parent
+     * @param  string  $table
+     * @param  string  $foreignPivotKey
+     * @param  string  $relatedPivotKey
+     * @param  string  $parentKey
+     * @param  string  $relatedKey
+     * @param  string|null $relationName
+     * @return \Arpon\Database\Eloquent\Relations\BelongsToMany
+     */
+    protected function newBelongsToMany(EloquentBuilder $query, Model $parent, string $table, string $foreignPivotKey, string $relatedPivotKey, string $parentKey, string $relatedKey, ?string $relationName = null)
+    {
+        return new BelongsToMany($query, $parent, $table, $foreignPivotKey, $relatedPivotKey, $parentKey, $relatedKey, $relationName);
+    }
+
+    /**
      * Get a relationship value from a method.
      *
      * @param  string  $method
@@ -2297,6 +2362,10 @@ abstract class Model implements ArrayAccess, JsonSerializable
      */
     protected function getRelationshipFromMethod(string $method)
     {
+        // Temporary debug: throw exception to inspect relation method and parent attributes
+        // (will be removed once debugging is complete).
+        // throw new \Exception(sprintf("DEBUG getRelationshipFromMethod: method=%s, parent=%s", $method, json_encode($this->attributes)));
+
         $relation = $this->$method();
 
         if (! $relation instanceof \Arpon\Database\Eloquent\Relations\Relation) {

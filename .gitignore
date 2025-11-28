@@ -44,6 +44,7 @@ fk_test_db/
 /phpunit.xml
 /.phpunit.result.cache
 /tests/_reports/
+artisan
 
 # Backup files
 *.backup
@@ -75,6 +76,9 @@ config.php
 index.php
 helpers.php
 mysql_index.php
+migrqate.php
 
 # Configuration files (keep config templates but ignore actual configs with secrets)
 config_local.php
+SOFT_DELETE_IMPLEMENTATION.php
+CHANGELOG.md

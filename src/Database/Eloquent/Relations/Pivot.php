@@ -109,4 +109,19 @@ class Pivot extends Model
     {
         return $this->parent->getUpdatedAtColumn();
     }
+
+    /**
+     * Set the pivot key names on the pivot instance.
+     *
+     * @param string $foreignKey
+     * @param string $otherKey
+     * @return $this
+     */
+    public function setPivotKeys(string $foreignKey, string $otherKey)
+    {
+        $this->foreignKey = $foreignKey;
+        $this->otherKey = $otherKey;
+
+        return $this;
+    }
 }

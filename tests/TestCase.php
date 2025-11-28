@@ -47,6 +47,8 @@ abstract class TestCase extends BaseTestCase
     protected function setupDatabase(): void
     {
         $config = [
+            // Ensure PDO returns objects (->property) instead of associative arrays
+            'database.fetch' => \PDO::FETCH_OBJ,
             'default' => $this->connection,
             'connections' => [
                 'sqlite' => [
@@ -58,8 +60,8 @@ abstract class TestCase extends BaseTestCase
                     'driver' => 'mysql',
                     'host' => 'localhost',
                     'port' => '3306',
-                    'database' => 'test_db',
-                    'username' => 'root',
+                    'database' => 'db_tool_test',
+                    'username' => 'valet',
                     'password' => '',
                     'charset' => 'utf8mb4',
                     'collation' => 'utf8mb4_unicode_ci',
@@ -216,11 +218,23 @@ abstract class TestCase extends BaseTestCase
     {
         if (isset($this->db)) {
             $connection = $this->db->connection($this->connection);
-            $connection->statement('DROP TABLE IF EXISTS users');
+
+            // If using MySQL, disable foreign key checks while dropping tables
+            if ($connection->getDriverName() === 'mysql') {
+                $connection->statement('SET FOREIGN_KEY_CHECKS = 0');
+            }
+
+            // Drop child tables first to avoid FK constraint violations
+            $connection->statement('DROP TABLE IF EXISTS comments');
             $connection->statement('DROP TABLE IF EXISTS posts');
             $connection->statement('DROP TABLE IF EXISTS profiles');
+            $connection->statement('DROP TABLE IF EXISTS users');
             $connection->statement('DROP TABLE IF EXISTS categories');
             $connection->statement('DROP TABLE IF EXISTS tags');
+
+            if ($connection->getDriverName() === 'mysql') {
+                $connection->statement('SET FOREIGN_KEY_CHECKS = 1');
+            }
         }
     }
 

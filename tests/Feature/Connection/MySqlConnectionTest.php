@@ -1,31 +1,21 @@
 <?php
 
-namespace Arpon\Database\Tests\Integration;
+namespace Arpon\Database\Tests\Feature\Connection; // Changed namespace
 
-use Arpon\Database\Tests\TestCase;
 use Arpon\Database\Query\Expression;
 use Exception;
 
 /**
  * MySQL Database Integration Tests
- * 
+ *
  * Converted from test-mysql.php to professional PHPUnit format
  * Note: These tests require MySQL to be available and configured
  */
-class MysqlConnectionTest extends TestCase
+class MySqlConnectionTest extends BaseConnectionTest // Changed parent class
 {
     protected string $connection = 'mysql';
 
-    protected function setUp(): void
-    {
-        try {
-            parent::setUp();
-        } catch (Exception $e) {
-            $this->markTestSkipped('MySQL connection not available: ' . $e->getMessage());
-        }
-    }
-
-    protected function setUp(): void
+    public function setUp(): void
     {
         try {
             parent::setUp();
@@ -41,7 +31,7 @@ class MysqlConnectionTest extends TestCase
     {
         $connection = $this->getConnection();
         $this->assertNotNull($connection);
-        
+
         // Test basic query
         $result = $connection->select('SELECT 1 as test');
         $this->assertEquals(1, $result[0]->test);
@@ -112,9 +102,9 @@ class MysqlConnectionTest extends TestCase
         ];
 
         $connection->table('mysql_types_test')->insert($testData);
-        
+
         $result = $connection->table('mysql_types_test')->first();
-        
+
         $this->assertEquals($testData['text_col'], $result->text_col);
         $this->assertIsString($result->json_col);
         $this->assertEquals($testData['datetime_col'], $result->datetime_col);
@@ -133,9 +123,9 @@ class MysqlConnectionTest extends TestCase
         $this->assertEquals('Hello World', $result[0]->greeting);
 
         // Test MySQL date functions
-        $result = $connection->select("SELECT NOW() as current_time, CURDATE() as current_date");
-        $this->assertNotEmpty($result[0]->current_time);
-        $this->assertNotEmpty($result[0]->current_date);
+        $result = $connection->select("SELECT NOW() as now_time, CURDATE() as cur_date"); // Changed aliases
+        $this->assertNotEmpty($result[0]->now_time);
+        $this->assertNotEmpty($result[0]->cur_date);
 
         // Test MySQL math functions
         $result = $connection->select("SELECT ROUND(3.14159, 2) as rounded");
@@ -190,10 +180,10 @@ class MysqlConnectionTest extends TestCase
         $connection->beginTransaction();
         try {
             $connection->table('users')->insert(['name' => 'Transaction Test', 'email' => 'trans@example.com']);
-            
+
             // Simulate an error condition
             throw new Exception('Simulated error');
-            
+
             $connection->commit();
         } catch (Exception $e) {
             $connection->rollback();
@@ -282,7 +272,7 @@ class MysqlConnectionTest extends TestCase
             ->get();
 
         $this->assertGreaterThan(0, count($results));
-        
+
         foreach ($results as $result) {
             $this->assertGreaterThan(0, $result->post_count);
         }
@@ -315,80 +305,5 @@ class MysqlConnectionTest extends TestCase
 
         // Just verify both queries return same data
         $this->assertEquals(count($users1), count($users2));
-    }
-
-    /**
-     * Override migration to use MySQL syntax
-     */
-    protected function migrateTestDatabase(): void
-    {
-        $connection = $this->db->connection($this->connection);
-
-        // Create users table with MySQL syntax
-        $connection->statement('DROP TABLE IF EXISTS users');
-        $connection->statement('
-            CREATE TABLE users (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                email VARCHAR(255) UNIQUE NOT NULL,
-                age INT,
-                settings JSON,
-                is_active BOOLEAN DEFAULT TRUE,
-                created_at DATETIME,
-                updated_at DATETIME
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        ');
-
-        // Create posts table with MySQL syntax
-        $connection->statement('DROP TABLE IF EXISTS posts');
-        $connection->statement('
-            CREATE TABLE posts (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                title VARCHAR(255) NOT NULL,
-                content TEXT,
-                user_id INT,
-                published_at DATETIME,
-                created_at DATETIME,
-                updated_at DATETIME,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        ');
-
-        // Create profiles table with MySQL syntax
-        $connection->statement('DROP TABLE IF EXISTS profiles');
-        $connection->statement('
-            CREATE TABLE profiles (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                user_id INT UNIQUE,
-                bio TEXT,
-                website VARCHAR(255),
-                created_at DATETIME,
-                updated_at DATETIME,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        ');
-
-        // Create categories table
-        $connection->statement('DROP TABLE IF EXISTS categories');
-        $connection->statement('
-            CREATE TABLE categories (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                description TEXT,
-                created_at DATETIME,
-                updated_at DATETIME
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        ');
-
-        // Create tags table
-        $connection->statement('DROP TABLE IF EXISTS tags');
-        $connection->statement('
-            CREATE TABLE tags (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                created_at DATETIME,
-                updated_at DATETIME
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        ');
     }
 }

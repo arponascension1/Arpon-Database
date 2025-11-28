@@ -1,29 +1,18 @@
 <?php
 
-namespace Arpon\Database\Tests\Unit;
+namespace Arpon\Database\Tests\Feature\Connection; // Corrected namespace
 
-use Arpon\Database\Tests\TestCase;
 use Arpon\Database\Query\Expression;
 use Exception;
 
 /**
  * Comprehensive SQLite Database Tests
- * 
+ *
  * Converted from test-sqlite.php to professional PHPUnit format
  */
-class SqliteConnectionTest extends TestCase
+class SqliteConnectionTest extends BaseConnectionTest // Corrected parent class
 {
     protected string $connection = 'sqlite';
-
-    /**
-     * Helper to convert array results to objects for easier testing
-     */
-    protected function toObject($data) {
-        if (is_array($data)) {
-            return (object)$data;
-        }
-        return $data;
-    }
 
     /**
      * @test
@@ -32,7 +21,7 @@ class SqliteConnectionTest extends TestCase
     {
         $connection = $this->getConnection();
         $this->assertNotNull($connection);
-        
+
         // Test basic query
         $result = $connection->select('SELECT 1 as test');
         $first = $this->toObject($result[0]);
@@ -58,7 +47,7 @@ class SqliteConnectionTest extends TestCase
         // Verify table exists by inserting data
         $connection->insert('INSERT INTO test_table (name, value) VALUES (?, ?)', ['test', 123]);
         $result = $connection->select('SELECT * FROM test_table WHERE name = ?', ['test']);
-        
+
         $this->assertEquals(1, count($result));
         $first = $this->toObject($result[0]);
         $this->assertEquals('test', $first->name);
@@ -66,7 +55,7 @@ class SqliteConnectionTest extends TestCase
 
         // Drop table
         $connection->statement('DROP TABLE test_table');
-        
+
         // Verify table is dropped
         $this->expectException(Exception::class);
         $connection->select('SELECT * FROM test_table');
@@ -190,7 +179,7 @@ class SqliteConnectionTest extends TestCase
         // Test min and max
         $minAge = $connection->table('users')->min('age');
         $maxAge = $connection->table('users')->max('age');
-        
+
         $this->assertIsInt($minAge);
         $this->assertIsInt($maxAge);
         $this->assertLessThanOrEqual($maxAge, $avgAge);
@@ -222,7 +211,7 @@ class SqliteConnectionTest extends TestCase
             ->get();
 
         $this->assertGreaterThanOrEqual(3, count($postsWithAuthors));
-        
+
         foreach ($postsWithAuthors as $post) {
             $post = $this->toObject($post);
             $this->assertNotEmpty($post->title);
@@ -296,9 +285,9 @@ class SqliteConnectionTest extends TestCase
         try {
             $connection->table('users')->insert(['name' => 'Transaction Test 1', 'email' => 'trans1@example.com']);
             $connection->table('users')->insert(['name' => 'Transaction Test 2', 'email' => 'trans2@example.com']);
-            
+
             $connection->commit();
-            
+
             // Verify data was committed
             $users = $connection->table('users')->where('name', 'like', 'Transaction Test%')->get();
             $this->assertEquals(2, count($users));
@@ -309,20 +298,20 @@ class SqliteConnectionTest extends TestCase
 
         // Test rollback transaction
         $initialCount = $connection->table('users')->count();
-        
+
         $connection->beginTransaction();
 
         try {
             $connection->table('users')->insert(['name' => 'Rollback Test 1', 'email' => 'rollback1@example.com']);
-            
+
             // Force an error by inserting duplicate email (if unique constraint exists)
             // For this test, we'll just manually rollback
             $connection->rollback();
-            
+
             // Verify data was not committed
             $finalCount = $connection->table('users')->count();
             $this->assertEquals($initialCount, $finalCount);
-            
+
         } catch (Exception $e) {
             $connection->rollback();
         }
@@ -346,7 +335,7 @@ class SqliteConnectionTest extends TestCase
             ->select($connection->raw('COUNT(*) as total'))
             ->where('name', 'like', 'Raw Test%')
             ->first();
-        
+
         $users = $this->toObject($users);
         $this->assertEquals(2, $users->total);
 
@@ -498,7 +487,7 @@ class SqliteConnectionTest extends TestCase
 
         // Test CASE WHEN expressions
         $users = $connection->table('users')
-            ->select(['name', 
+            ->select(['name',
                 $connection->raw("CASE WHEN age >= 30 THEN 'Senior' ELSE 'Junior' END as category")
             ])
             ->whereNotNull('age')
@@ -535,7 +524,7 @@ class SqliteConnectionTest extends TestCase
 
         // Insert data with relationships
         $userId = $connection->table('users')->insertGetId(['name' => 'Integrity User', 'email' => 'integrity@example.com']);
-        
+
         $connection->table('posts')->insert([
             'title' => 'Integrity Post',
             'content' => 'Testing data integrity',

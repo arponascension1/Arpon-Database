@@ -226,6 +226,25 @@ class Builder
     }
 
     /**
+     * Add more columns to the current select clause.
+     *
+     * @param array|mixed $columns
+     * @return $this
+     */
+    public function addSelect($columns)
+    {
+        $columns = is_array($columns) ? $columns : func_get_args();
+
+        if (is_null($this->columns)) {
+            $this->columns = $columns;
+        } else {
+            $this->columns = array_merge($this->columns, $columns);
+        }
+
+        return $this;
+    }
+
+    /**
      * Force the query to only return distinct results.
      *
      * @return $this

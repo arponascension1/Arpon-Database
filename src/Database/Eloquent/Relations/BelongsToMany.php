@@ -218,6 +218,67 @@ class BelongsToMany extends Relation
     }
 
     /**
+     * Attach a model to the parent in the pivot table.
+     *
+     * @param mixed $id
+     * @param array $attributes
+     * @return void
+     */
+    public function attach($id, array $attributes = [])
+    {
+        $ids = is_array($id) ? $id : [$id];
+
+        foreach ($ids as $relatedId) {
+            $payload = array_merge([
+                $this->foreignPivotKey => $this->parent->{$this->parentKey},
+                $this->relatedPivotKey => $relatedId
+            ], $attributes);
+
+            // Use the connection to insert into the pivot table
+            $this->query->getQuery()->connection->table($this->table)->insert($payload);
+        }
+    }
+
+    /**
+     * Detach models from the pivot table.
+     *
+     * @param mixed $ids
+     * @return void
+     */
+    public function detach($ids = null)
+    {
+        $query = $this->query->getQuery()->connection->table($this->table);
+
+        if (is_null($ids)) {
+            $query->where($this->foreignPivotKey, '=', $this->parent->{$this->parentKey})->delete();
+            return;
+        }
+
+        $ids = is_array($ids) ? $ids : [$ids];
+
+        foreach ($ids as $id) {
+            $query->where($this->foreignPivotKey, '=', $this->parent->{$this->parentKey})
+                  ->where($this->relatedPivotKey, '=', $id)->delete();
+        }
+    }
+
+    /**
+     * Sync the given IDs with the pivot table.
+     *
+     * @param array $ids
+     * @return void
+     */
+    public function sync(array $ids)
+    {
+        // Remove all current pivot records for parent, then attach provided IDs
+        $this->detach();
+
+        foreach ($ids as $id) {
+            $this->attach($id);
+        }
+    }
+
+    /**
      * Execute the query as a "select" statement.
      *
      * @param  array  $columns

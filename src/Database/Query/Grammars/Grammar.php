@@ -251,6 +251,26 @@ class Grammar extends BaseGrammar
     }
 
     /**
+     * Compile a nested where clause.
+     *
+     * @param array $where
+     * @return string
+     */
+    protected function whereNested($where)
+    {
+        // The nested where contains a query instance which we can compile into
+        // a set of where clauses. The compileWheres method returns a string
+        // prefixed with the word "where", so we strip that prefix and wrap
+        // the remaining clauses in parentheses.
+        $compiled = $this->compileWheres($where['query']);
+
+        // Remove the leading 'where ' that compileWheres returns.
+        $compiled = preg_replace('/^where\s+/i', '', $compiled);
+
+        return '('.$compiled.')';
+    }
+
+    /**
      * Compile a "where in" clause.
      *
      * @param  array  $where
