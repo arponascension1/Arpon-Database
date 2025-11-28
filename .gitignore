@@ -76,7 +76,7 @@ config.php
 index.php
 helpers.php
 mysql_index.php
-migrqate.php
+migration.php
 
 # Configuration files (keep config templates but ignore actual configs with secrets)
 config_local.php
