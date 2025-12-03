@@ -88,46 +88,42 @@ abstract class BaseAdvancedModelTest extends TestCase
     /** @test */
     public function it_handles_soft_deletes()
     {
-        if ($this->connection === 'mysql') {
-            // Add deleted_at column for soft deletes
-            // Note: In a real migration this would be done properly. Here we alter for the test.
-            try {
-                $this->getConnection()->statement('ALTER TABLE users ADD COLUMN deleted_at TIMESTAMP NULL');
-            } catch (\Exception $e) {
-                // Column might already exist or error, ignore for now and assume schema builder works or manual add
-            }
-        } else {
-            try {
-                $this->getConnection()->statement('ALTER TABLE users ADD COLUMN deleted_at DATETIME');
-            } catch(\Exception $e) {
-                // Ignore if exists
-            }
-        }
+        $this->addDeletedAtColumn();
 
         $user = SoftDeleteUser::create(['name' => 'Soft Delete Me', 'email' => 'soft@example.com']);
-        
         $this->assertNull($user->deleted_at);
         
         $user->delete();
-        
-        $this->assertNotNull($user->deleted_at, "deleted_at is null!");
+        $this->assertNotNull($user->deleted_at);
         $this->assertTrue($user->trashed());
-        
-        // Default query should not find it
         $this->assertNull(SoftDeleteUser::find($user->id));
         
         // withTrashed should find it
         $deletedUser = SoftDeleteUser::withTrashed()->find($user->id);
-        $this->assertNotNull($deletedUser, "Failed to retrieve soft-deleted model with withTrashed()");
+        $this->assertNotNull($deletedUser);
         $this->assertEquals($user->id, $deletedUser->id);
         
         // Restore
-        $this->assertTrue($deletedUser->restore(), "Restore operation failed");
-        $this->assertNull($deletedUser->deleted_at, "deleted_at not null on object after restore");
+        $this->assertTrue($deletedUser->restore());
+        $this->assertNull($deletedUser->deleted_at);
         $this->assertFalse($deletedUser->trashed());
+        $this->assertNotNull(SoftDeleteUser::find($user->id));
+    }
+    
+    /**
+     * Helper to add deleted_at column (idempotent)
+     */
+    private function addDeletedAtColumn(): void
+    {
+        $sql = $this->connection === 'mysql' 
+            ? 'ALTER TABLE users ADD COLUMN deleted_at TIMESTAMP NULL'
+            : 'ALTER TABLE users ADD COLUMN deleted_at DATETIME';
         
-        $found = SoftDeleteUser::find($user->id);
-        $this->assertNotNull($found, "Failed to retrieve restored model");
+        try {
+            $this->getConnection()->statement($sql);
+        } catch (\Exception $e) {
+            // Column already exists, ignore
+        }
     }
 
     /** @test */
@@ -149,22 +145,16 @@ abstract class BaseAdvancedModelTest extends TestCase
     public function it_handles_polymorphic_relations()
     {
         $post = PostWithImage::create(['title' => 'Post with Image', 'content' => 'Content']);
-        
         $image = $post->images()->create(['url' => 'http://example.com/image.jpg']);
         
-        $this->assertNotNull($image);
         $this->assertEquals($post->id, $image->imageable_id);
         $this->assertEquals(PostWithImage::class, $image->imageable_type);
+        $this->assertCount(1, $post->images);
+        $this->assertEquals('http://example.com/image.jpg', $post->images->first()->url);
         
-        // Retrieve via relation
-        $retrievedImages = $post->images;
-        $this->assertCount(1, $retrievedImages);
-        $this->assertEquals('http://example.com/image.jpg', $retrievedImages->first()->url);
-        
-        // Inverse
-        $retrievedPost = $image->imageable;
-        $this->assertInstanceOf(PostWithImage::class, $retrievedPost);
-        $this->assertEquals($post->id, $retrievedPost->id);
+        // Test inverse
+        $this->assertInstanceOf(PostWithImage::class, $image->imageable);
+        $this->assertEquals($post->id, $image->imageable->id);
     }
 
     /** @test */
@@ -174,26 +164,20 @@ abstract class BaseAdvancedModelTest extends TestCase
         $role1 = Role::create(['name' => 'Admin']);
         $role2 = Role::create(['name' => 'Editor']);
         
-        // Attach
-        $user->roles()->attach($role1->id);
-        $user->roles()->attach($role2->id);
-        
+        // Test attach
+        $user->roles()->attach([$role1->id, $role2->id]);
         $this->assertCount(2, $user->roles);
-        $roleNames = $user->roles->pluck('name')->all();
-        $this->assertContains('Admin', $roleNames);
-        $this->assertContains('Editor', $roleNames);
+        $this->assertEquals(['Admin', 'Editor'], $user->roles->pluck('name')->sort()->values()->all());
         
-        // Detach
+        // Test detach
         $user->roles()->detach($role1->id);
-        $this->loadRelationship($user, 'roles'); // Reload relationship
-        
+        $this->loadRelationship($user, 'roles');
         $this->assertCount(1, $user->roles);
         $this->assertEquals('Editor', $user->roles->first()->name);
         
-        // Sync
+        // Test sync
         $user->roles()->sync([$role1->id]);
         $this->loadRelationship($user, 'roles');
-        
         $this->assertCount(1, $user->roles);
         $this->assertEquals('Admin', $user->roles->first()->name);
     }

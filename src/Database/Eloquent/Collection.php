@@ -330,6 +330,18 @@ class Collection extends BaseCollection
     }
 
     /**
+     * Get the last item from the collection.
+     *
+     * @param  callable|null  $callback
+     * @param  mixed  $default
+     * @return mixed
+     */
+    public function last(callable $callback = null, $default = null)
+    {
+        return $this->toBase()->last($callback, $default);
+    }
+
+    /**
      * Sort the collection by a given key.
      *
      * @param  callable|string  $callback

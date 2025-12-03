@@ -2,9 +2,12 @@
 
 namespace Arpon\Database\Capsule;
 
+use Arpon\Database\Connection;
 use Arpon\Database\Connectors\ConnectionFactory;
 use Arpon\Database\DatabaseManager;
 use Arpon\Database\Eloquent\Model as Eloquent;
+use Arpon\Database\Query\Builder;
+use Closure;
 use PDO;
 
 class Manager
@@ -40,7 +43,7 @@ class Manager
      *
      * @return void
      */
-    protected function setupDefaultConfiguration()
+    protected function setupDefaultConfiguration(): void
     {
         $config = $this->container['config'];
         $config['database.fetch'] = PDO::FETCH_OBJ;
@@ -54,7 +57,7 @@ class Manager
      *
      * @return void
      */
-    protected function setupManager()
+    protected function setupManager(): void
     {
         $factory = new ConnectionFactory($this->container);
 
@@ -64,10 +67,10 @@ class Manager
     /**
      * Get a connection instance from the global manager.
      *
-     * @param  string|null  $connection
-     * @return \Arpon\Database\Connection
+     * @param string|null $connection
+     * @return Connection
      */
-    public static function connection($connection = null)
+    public static function connection(string $connection = null): Connection
     {
         return static::$instance->getConnection($connection);
     }
@@ -75,12 +78,12 @@ class Manager
     /**
      * Get a fluent query builder instance.
      *
-     * @param  \Closure|\Arpon\Database\Query\Builder|string  $table
-     * @param  string|null  $as
-     * @param  string|null  $connection
-     * @return \Arpon\Database\Query\Builder
+     * @param Closure|string|Builder $table
+     * @param string|null $as
+     * @param string|null $connection
+     * @return Builder
      */
-    public static function table($table, $as = null, $connection = null)
+    public static function table(Closure|Builder|string $table, string $as = null, string $connection = null): Builder
     {
         return static::$instance->connection($connection)->table($table, $as);
     }
@@ -88,10 +91,10 @@ class Manager
     /**
      * Get a schema builder instance.
      *
-     * @param  string|null  $connection
+     * @param string|null $connection
      * @return \Arpon\Database\Schema\Builder
      */
-    public static function schema($connection = null)
+    public static function schema(string $connection = null): \Arpon\Database\Schema\Builder
     {
         return static::$instance->connection($connection)->getSchemaBuilder();
     }
@@ -99,10 +102,10 @@ class Manager
     /**
      * Get a registered connection instance.
      *
-     * @param  string|null  $name
-     * @return \Arpon\Database\Connection
+     * @param string|null $name
+     * @return Connection
      */
-    public function getConnection($name = null)
+    public function getConnection(string $name = null): Connection
     {
         return $this->manager->connection($name);
     }

@@ -66,6 +66,22 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate
     }
 
     /**
+     * Get the last item from the collection.
+     *
+     * @param  callable|null  $callback
+     * @param  mixed  $default
+     * @return mixed
+     */
+    public function last(callable $callback = null, $default = null)
+    {
+        if (is_null($callback)) {
+            return empty($this->items) ? $default : end($this->items);
+        }
+
+        return $this->filter($callback)->last(null, $default);
+    }
+
+    /**
      * Determine if the collection is empty or not.
      *
      * @return bool

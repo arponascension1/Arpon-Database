@@ -844,6 +844,191 @@ class EloquentBuilder
     {
         return $this->orderBy($column, 'asc');
     }
+
+    /**
+     * Retrieve the "count" result of the query.
+     */
+    public function count(string $columns = '*'): int
+    {
+        return $this->toBase()->count($columns);
+    }
+
+    /**
+     * Retrieve the minimum value of a given column.
+     */
+    public function min(string $column)
+    {
+        return $this->toBase()->min($column);
+    }
+
+    /**
+     * Retrieve the maximum value of a given column.
+     */
+    public function max(string $column)
+    {
+        return $this->toBase()->max($column);
+    }
+
+    /**
+     * Retrieve the sum of the values of a given column.
+     */
+    public function sum(string $column)
+    {
+        return $this->toBase()->sum($column);
+    }
+
+    /**
+     * Retrieve the average of the values of a given column.
+     */
+    public function avg(string $column)
+    {
+        return $this->toBase()->avg($column);
+    }
+
+    /**
+     * Alias for the "avg" method.
+     */
+    public function average(string $column)
+    {
+        return $this->avg($column);
+    }
+
+    /**
+     * Determine if any rows exist for the current query.
+     */
+    public function exists(): bool
+    {
+        return $this->toBase()->exists();
+    }
+
+    /**
+     * Determine if no rows exist for the current query.
+     */
+    public function doesntExist(): bool
+    {
+        return !$this->exists();
+    }
+
+    /**
+     * Chunk the results of the query.
+     */
+    public function chunk(int $count, callable $callback): bool
+    {
+        $page = 1;
+
+        do {
+            // We'll execute the query for the given page and get the results. If there are
+            // no results we can break from the loop. When there are results
+            // we will call the callback with the current chunk of these results here.
+            $results = $this->forPage($page, $count)->get();
+
+            $countResults = $results->count();
+
+            if ($countResults == 0) {
+                break;
+            }
+
+            // On each chunk result set, we will pass them to the callback and then let the
+            // developer take care of everything within the callback, which allows us to
+            // keep the memory low for spinning through large result sets for working.
+            if ($callback($results, $page) === false) {
+                return false;
+            }
+
+            unset($results);
+
+            $page++;
+        } while ($countResults == $count);
+
+        return true;
+    }
+
+    /**
+     * Get a single column's value from the first result of a query.
+     */
+    public function value(string $column)
+    {
+        if ($result = $this->first([$column])) {
+            return $result->{$column};
+        }
+    }
+
+    /**
+     * Execute a query for a single record by ID.
+     */
+    public function findOrNew($id, array $columns = ['*']): Model
+    {
+        if (!is_null($model = $this->find($id, $columns))) {
+            return $model;
+        }
+
+        return $this->newModelInstance();
+    }
+
+    /**
+     * Get the first record matching the attributes or instantiate it.
+     */
+    public function firstOrNew(array $attributes = [], array $values = []): Model
+    {
+        if (!is_null($instance = $this->where($attributes)->first())) {
+            return $instance;
+        }
+
+        return $this->newModelInstance(array_merge($attributes, $values));
+    }
+
+    /**
+     * Get the first record matching the attributes or create it.
+     */
+    public function firstOrCreate(array $attributes = [], array $values = []): Model
+    {
+        if (!empty($attributes)) {
+            if (!is_null($instance = $this->where($attributes)->first())) {
+                return $instance;
+            }
+        } else {
+            // If no attributes specified, just check if any record exists
+            if (!is_null($instance = $this->first())) {
+                return $instance;
+            }
+        }
+
+        return tap($this->newModelInstance(array_merge($attributes, $values)), function ($instance) {
+            $instance->save();
+        });
+    }
+
+    /**
+     * Create or update a record matching the attributes, and fill it with values.
+     */
+    public function updateOrCreate(array $attributes, array $values = []): Model
+    {
+        return tap($this->firstOrNew($attributes), function ($instance) use ($values) {
+            $instance->fill($values)->save();
+        });
+    }
+
+    /**
+     * Execute the query and get all results.
+     */
+    public function pluck(string $column, ?string $key = null)
+    {
+        // First we will need to select the columns to be sure we have them.
+        $queryResult = $this->toBase()->pluck($column, $key);
+
+        // If the model has a mutator for the requested column, we need to spin through
+        // the results and mutate the values so that the mutated version is returned
+        // as these values will not be retrieved in the mutated form from the table.
+        if (!$this->model->hasGetMutator($column) &&
+            !$this->model->hasCast($column) &&
+            !in_array($column, $this->model->getDates())) {
+            return $queryResult;
+        }
+
+        return $queryResult->map(function ($value) use ($column) {
+            return $this->model->newFromBuilder([$column => $value])->{$column};
+        });
+    }
 }
 
 // Utility function

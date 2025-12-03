@@ -1092,6 +1092,36 @@ class Builder
     }
 
     /**
+     * Determine if any rows exist for the current query.
+     *
+     * @return bool
+     */
+    public function exists()
+    {
+        $results = $this->connection->select(
+            $this->grammar->compileExists($this), $this->getBindings(), !$this->useWritePdo
+        );
+
+        if (isset($results[0])) {
+            $results = (array) $results[0];
+
+            return (bool) $results['exists'];
+        }
+
+        return false;
+    }
+
+    /**
+     * Determine if no rows exist for the current query.
+     *
+     * @return bool
+     */
+    public function doesntExist()
+    {
+        return ! $this->exists();
+    }
+
+    /**
      * Execute an aggregate function on the database.
      *
      * @param  string  $function

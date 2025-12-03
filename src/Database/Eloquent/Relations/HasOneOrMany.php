@@ -162,6 +162,73 @@ abstract class HasOneOrMany extends Relation
     }
 
     /**
+     * Save multiple new models and attach them to the parent model.
+     *
+     * @param  iterable  $models
+     * @return iterable
+     */
+    public function saveMany(iterable $models)
+    {
+        foreach ($models as $model) {
+            $this->save($model);
+        }
+
+        return $models;
+    }
+
+    /**
+     * Get the first record matching the attributes or create it.
+     *
+     * @param  array  $attributes
+     * @param  array  $values
+     * @return \Arpon\Database\Eloquent\Model
+     */
+    public function firstOrCreate(array $attributes = [], array $values = [])
+    {
+        if (!empty($attributes)) {
+            if (!is_null($instance = $this->where($attributes)->first())) {
+                return $instance;
+            }
+        } else {
+            // If no attributes specified, just check if any record exists
+            if (!is_null($instance = $this->first())) {
+                return $instance;
+            }
+        }
+
+        $attributes[$this->getForeignKeyName()] = $this->getParentKey();
+        $values[$this->getForeignKeyName()] = $this->getParentKey();
+
+        return $this->query->create(array_merge($attributes, $values));
+    }
+
+    /**
+     * Create or update a record matching the attributes, and fill it with values.
+     *
+     * @param  array  $attributes
+     * @param  array  $values
+     * @return \Arpon\Database\Eloquent\Model
+     */
+    public function updateOrCreate(array $attributes, array $values = [])
+    {
+        if (!empty($attributes)) {
+            $instance = $this->where($attributes)->first();
+        } else {
+            $instance = $this->first();
+        }
+
+        if (!is_null($instance)) {
+            $instance->fill($values)->save();
+            return $instance;
+        }
+
+        $attributes[$this->getForeignKeyName()] = $this->getParentKey();
+        $values[$this->getForeignKeyName()] = $this->getParentKey();
+
+        return $this->query->create(array_merge($attributes, $values));
+    }
+
+    /**
      * Create a new instance of the related model.
      *
      * @param  array  $attributes

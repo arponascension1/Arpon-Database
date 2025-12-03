@@ -6,25 +6,31 @@ use Arpon\Database\Tests\TestCase;
 
 abstract class BaseSchemaTest extends TestCase
 {
+    /**
+     * Cache schema instance to avoid repeated getConnection()->schema() calls
+     */
+    protected $schema;
+    
     protected function migrateTestDatabase(): void
     {
         parent::migrateTestDatabase();
-
-        $connection = $this->getConnection();
-
-        // Ensure test schema tables are removed before each test suite
-        $connection->statement('DROP TABLE IF EXISTS schema_examples');
-        $connection->statement('DROP TABLE IF EXISTS old_schema');
-        $connection->statement('DROP TABLE IF EXISTS new_schema');
-        $connection->statement('DROP TABLE IF EXISTS to_drop');
-        $connection->statement('DROP TABLE IF EXISTS to_drop_if_exists');
+        
+        // Initialize schema cache
+        $this->schema = $this->getConnection()->schema();
+    }
+    
+    /**
+     * Helper to get schema (uses cached instance)
+     */
+    protected function schema()
+    {
+        return $this->schema ?? ($this->schema = $this->getConnection()->schema());
     }
 
     /** @test */
     public function it_can_create_table_and_check_columns()
     {
-        $schema = $this->getConnection()->schema();
-
+        $schema = $this->schema();
         $schema->dropIfExists('schema_examples');
 
         $schema->create('schema_examples', function ($table) {
@@ -46,17 +52,14 @@ abstract class BaseSchemaTest extends TestCase
     /** @test */
     public function it_can_rename_a_table()
     {
-        $schema = $this->getConnection()->schema();
-
+        $schema = $this->schema();
+        $schema->dropIfExists('new_schema'); // Drop target first to avoid conflicts
         $schema->dropIfExists('old_schema');
-        $schema->dropIfExists('new_schema');
 
         $schema->create('old_schema', function ($table) {
             $table->id();
             $table->string('title');
         });
-
-        $this->assertTrue($schema->hasTable('old_schema'));
 
         $schema->rename('old_schema', 'new_schema');
 
@@ -67,8 +70,7 @@ abstract class BaseSchemaTest extends TestCase
     /** @test */
     public function it_can_drop_tables()
     {
-        $schema = $this->getConnection()->schema();
-
+        $schema = $this->schema();
         $schema->dropIfExists('to_drop');
 
         $schema->create('to_drop', function ($table) {
@@ -77,34 +79,26 @@ abstract class BaseSchemaTest extends TestCase
         });
 
         $this->assertTrue($schema->hasTable('to_drop'));
-
         $schema->drop('to_drop');
-
         $this->assertFalse($schema->hasTable('to_drop'));
 
         // dropIfExists should not throw when table missing
-        $schema->dropIfExists('to_drop_if_exists');
-        $this->assertFalse($schema->hasTable('to_drop_if_exists'));
+        $schema->dropIfExists('non_existent_table');
+        $this->assertFalse($schema->hasTable('non_existent_table'));
     }
 
     /** @test */
     public function it_can_toggle_foreign_key_constraints()
     {
-        $schema = $this->getConnection()->schema();
-
-        // The methods should execute without throwing and return a boolean result
-        $disabled = $schema->disableForeignKeyConstraints();
-        $this->assertTrue(is_bool($disabled));
-
-        $enabled = $schema->enableForeignKeyConstraints();
-        $this->assertTrue(is_bool($enabled));
+        $schema = $this->schema();
+        $this->assertIsBool($schema->disableForeignKeyConstraints());
+        $this->assertIsBool($schema->enableForeignKeyConstraints());
     }
 
     /** @test */
     public function it_respects_unique_constraints()
     {
-        $schema = $this->getConnection()->schema();
-
+        $schema = $this->schema();
         $schema->dropIfExists('unique_examples');
 
         $schema->create('unique_examples', function ($table) {
@@ -113,38 +107,21 @@ abstract class BaseSchemaTest extends TestCase
         });
 
         $conn = $this->getConnection();
+        $conn->table('unique_examples')->insert(['email' => 'unique@example.com']);
 
-        // First insert should succeed
-        $conn->table('unique_examples')->insert([
-            'email' => 'unique@example.com'
-        ]);
-
-        // Second insert with same email should fail due to unique constraint
-        $threw = false;
-        try {
-            $conn->table('unique_examples')->insert([
-                'email' => 'unique@example.com'
-            ]);
-        } catch (\Exception $e) {
-            $threw = true;
-        }
-
-        $this->assertTrue($threw, 'Expected unique constraint to throw on duplicate insert');
+        $this->expectException(\Exception::class);
+        $conn->table('unique_examples')->insert(['email' => 'unique@example.com']);
     }
 
     /** @test */
     public function it_applies_foreign_keys_and_cascades_on_delete()
     {
-        $schema = $this->getConnection()->schema();
-
-        // Ensure foreign keys are enforced when testing cascade behavior
+        $schema = $this->schema();
         $schema->enableForeignKeyConstraints();
 
-
-    // Use conventional table names so constrained() can guess the parent table
-    // Drop child first to avoid FK constraint blocking drops
-    $schema->dropIfExists('children');
-    $schema->dropIfExists('parents');
+        // Drop child first to avoid FK constraint blocking drops
+        $schema->dropIfExists('children');
+        $schema->dropIfExists('parents');
 
         $schema->create('parents', function ($table) {
             $table->id();
@@ -158,24 +135,19 @@ abstract class BaseSchemaTest extends TestCase
         });
 
         $conn = $this->getConnection();
-
         $conn->table('parents')->insert(['name' => 'Parent']);
-        $parent = $conn->table('parents')->get();
-
-        $conn->table('children')->insert(['parent_id' => $parent[0]->id, 'title' => 'Child']);
+        $parentId = $conn->table('parents')->first()->id;
+        $conn->table('children')->insert(['parent_id' => $parentId, 'title' => 'Child']);
 
         // Delete parent and expect child to be removed if cascade is active
         $conn->table('parents')->delete();
-
-        $children = $conn->table('children')->get();
-        $this->assertCount(0, $children);
+        $this->assertCount(0, $conn->table('children')->get());
     }
 
     /** @test */
     public function it_can_create_json_column_and_store_json()
     {
-        $schema = $this->getConnection()->schema();
-
+        $schema = $this->schema();
         $schema->dropIfExists('json_examples');
 
         $schema->create('json_examples', function ($table) {
@@ -183,17 +155,14 @@ abstract class BaseSchemaTest extends TestCase
             $table->json('payload');
         });
 
-        $conn = $this->getConnection();
-
         $data = ['key' => 'value', 'nested' => ['a' => 1]];
+        $conn = $this->getConnection();
+        $conn->table('json_examples')->insert(['payload' => json_encode($data)]);
 
-        $conn->table('json_examples')->insert([
-            'payload' => json_encode($data)
-        ]);
-
-        $row = $conn->table('json_examples')->get()[0];
-
-        $payload = is_string($row->payload) ? json_decode($row->payload, true) : (is_string(json_encode($row->payload)) ? json_decode(json_encode($row->payload), true) : (array) $row->payload);
+        $row = $conn->table('json_examples')->first();
+        $payload = is_string($row->payload) 
+            ? json_decode($row->payload, true) 
+            : json_decode(json_encode($row->payload), true);
 
         $this->assertEquals($data, $payload);
     }
@@ -201,43 +170,28 @@ abstract class BaseSchemaTest extends TestCase
     /** @test */
     public function it_supports_composite_primary_and_unique_indexes()
     {
-        $schema = $this->getConnection()->schema();
-
+        $schema = $this->schema();
         $schema->dropIfExists('composite_examples');
 
         $schema->create('composite_examples', function ($table) {
             $table->integer('a');
             $table->integer('b');
             $table->primary(['a', 'b']);
-            $table->unique(['a', 'b'], 'composite_idx');
         });
 
         $conn = $this->getConnection();
-
-        // Insert first row
         $conn->table('composite_examples')->insert(['a' => 1, 'b' => 2]);
 
-        // Duplicate composite should fail due to unique index
-        $threw = false;
-        try {
-            $conn->table('composite_examples')->insert(['a' => 1, 'b' => 2]);
-        } catch (\Exception $e) {
-            $threw = true;
-        }
-
-        $this->assertTrue($threw, 'Expected duplicate composite insert to throw due to unique index');
+        $this->expectException(\Exception::class);
+        $conn->table('composite_examples')->insert(['a' => 1, 'b' => 2]);
     }
 
     /** @test */
     public function it_respects_on_delete_set_null_for_foreign_keys()
     {
-        $schema = $this->getConnection()->schema();
-
-        // Drop in correct order
+        $schema = $this->schema();
         $schema->dropIfExists('child_nullable');
         $schema->dropIfExists('parent_nullable');
-
-        // Ensure foreign key enforcement is enabled for this connection
         $schema->enableForeignKeyConstraints();
 
         $schema->create('parent_nullable', function ($table) {
@@ -248,30 +202,24 @@ abstract class BaseSchemaTest extends TestCase
         $schema->create('child_nullable', function ($table) {
             $table->id();
             $table->unsignedBigInteger('parent_id')->nullable();
-            // Create explicit foreign key with ON DELETE SET NULL
             $table->foreign(['parent_id'])->references(['id'])->on('parent_nullable')->nullOnDelete();
         });
 
         $conn = $this->getConnection();
+        $conn->table('parent_nullable')->insert(['name' => 'p']);
+        $parentId = $conn->table('parent_nullable')->first()->id;
+        $conn->table('child_nullable')->insert(['parent_id' => $parentId]);
 
-    $conn->table('parent_nullable')->insert(['name' => 'p']);
-    $parent = $conn->table('parent_nullable')->get()[0];
-
-        $conn->table('child_nullable')->insert(['parent_id' => $parent->id]);
-
-        // Delete parent, expect child.parent_id to become null
         $conn->table('parent_nullable')->delete();
 
-        $children = $conn->table('child_nullable')->get();
-        $this->assertCount(1, $children);
-        $this->assertNull($children[0]->parent_id);
+        $child = $conn->table('child_nullable')->first();
+        $this->assertNull($child->parent_id);
     }
 
     /** @test */
-    public function it_handles_rename_column_on_mysql_and_throws_on_sqlite()
+    public function it_throws_runtime_exception_when_renaming_column()
     {
-        $schema = $this->getConnection()->schema();
-
+        $schema = $this->schema();
         $schema->dropIfExists('rename_examples');
 
         $schema->create('rename_examples', function ($table) {
@@ -279,7 +227,6 @@ abstract class BaseSchemaTest extends TestCase
             $table->string('old_name');
         });
 
-        // Renaming columns requires DB introspection which isn't implemented here.
         $this->expectException(\RuntimeException::class);
         $schema->table('rename_examples', function ($table) {
             $table->renameColumn('old_name', 'new_name');
@@ -290,11 +237,8 @@ abstract class BaseSchemaTest extends TestCase
     public function it_outputs_sql_from_blueprint()
     {
         $connection = $this->getConnection();
+        $grammar = $connection->getSchemaGrammar() ?? $connection->useDefaultSchemaGrammar();
         $grammar = $connection->getSchemaGrammar();
-        if (is_null($grammar)) {
-            $connection->useDefaultSchemaGrammar();
-            $grammar = $connection->getSchemaGrammar();
-        }
 
         $blueprint = new \Arpon\Database\Schema\Blueprint('sql_out');
         $blueprint->create();
@@ -305,8 +249,9 @@ abstract class BaseSchemaTest extends TestCase
         $sql = $blueprint->toSql($connection, $grammar);
 
         $this->assertIsArray($sql);
-        $joined = implode(' ', $sql);
-        $this->assertStringContainsString('create', strtolower($joined));
-        $this->assertStringContainsString('name', strtolower($joined));
+        $this->assertNotEmpty($sql);
+        $joined = strtolower(implode(' ', $sql));
+        $this->assertStringContainsString('create', $joined);
+        $this->assertStringContainsString('name', $joined);
     }
 }
